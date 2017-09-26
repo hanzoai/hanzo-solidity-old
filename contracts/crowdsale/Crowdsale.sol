@@ -28,6 +28,9 @@ contract Crowdsale {
     // Amount raised in token sale
     uint256 public tokenSaleRaised;
 
+    // How many token units per wei
+    uint256 public rate;
+
     event PresalePurchase(address indexed beneficiary, uint256 amount, string
                           tokenName);
 
@@ -61,6 +64,8 @@ contract Crowdsale {
     function buyTokens(address beneficiary) public payable {
         require(beneficiary != 0x0);
         require(validPurchase());
+        require(rate > 0);
+        require(auditorFee < 100);
 
         uint256 weiAmount = msg.value;
 
@@ -68,10 +73,10 @@ contract Crowdsale {
         uint256 tokens = weiAmount.mul(rate);
 
         // update state
-        tokenSaleRaised = weiRaised.add(weiAmount);
+        tokenSaleRaised = tokenSaleRaised.add(weiAmount);
 
         token.mint(beneficiary, tokens);
-        TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
+        //TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
 
         forwardFunds();
     }
@@ -79,14 +84,25 @@ contract Crowdsale {
     // send ether to the fund collection wallet
     // override to create custom fund forwarding mechanisms
     function forwardFunds() internal {
-        wallet.transfer(msg.value);
+        // Reassert some basics here.
+        uint256 funds = msg.value;
+        // No floating point math in Solidity
+        uint256 auditorShare = funds.mul(auditorFee).div(100);
+        auditor.transfer(auditorShare);
+        merchant.transfer(funds - auditorShare);
     }
 
     // @return true if the transaction can buy tokens
+    // The rate here is slightly different from normal
+    // crowd sales, where the rate is set arbitrarily.
+    // Our crowd sales have rates set by the market during
+    // a presale period, and thus nothing is valid if that
+    // rate has not been established yet.
     function validPurchase() internal constant returns (bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = msg.value != 0;
-        return withinPeriod && nonZeroPurchase;
+        bool isRateInitialized = rate != 0;
+        return withinPeriod && nonZeroPurchase && isRateInitialized;
     }
 
     // @return true if crowdsale event has ended
@@ -101,5 +117,12 @@ contract Crowdsale {
     function logPresale(address beneficiary, uint256 amount) public {
         require(msg.sender == auditor);
         PresalePurchase(beneficiary, amount, "token name");
+    }
+
+    // Since this is set by the market during the presale period,
+    // it's worth making an explicit getter to let people know this can be
+    // checked.
+    function getRate() public returns (uint256) {
+        return rate;
     }
 }
