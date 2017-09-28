@@ -1,13 +1,18 @@
 pragma solidity ^ 0.4.13;
 
 import 'zeppelin-solidity/contracts/math/SafeMath.sol';
-import 'zeppelin-solidity/contracts/token/MintableToken.sol';
+import '../NamedMintableToken.sol';
+import '../data/ContributorCache.sol';
 
 contract Crowdsale {
 
     using SafeMath for uint256;
 
-    MintableToken public token;
+    uint constant private feePrecision = 1000;
+
+    NamedMintableToken public token;
+
+    ContributorCache internal cache;
 
     // The start and end time that contributions are allowed (both inclusive)
     uint256 public startTime;
@@ -18,8 +23,10 @@ contract Crowdsale {
 
     // The wallet owned by the third party enforcing ethical behavior.
     address public auditor;
-    // The percentage fee the auditor receives for services. Expressed in
-    // something like '5'.
+
+    // The percentage fee the auditor receives for services. Whole numbers
+    // expressing a percentage up to feePrecision - so at feePrecision = 1000,
+    // 5% would be 50, 5.5% is 55, etc.
     uint private auditorFee;
 
     // Amount raised in presale (off-blockchain) period
@@ -31,19 +38,36 @@ contract Crowdsale {
     // How many token units per wei
     uint256 public rate;
 
-    event PresalePurchase(address indexed beneficiary, uint256 amount, string
+    // There is always some initial token amount so we can calculate the rate
+    // based upon the response to the presale. However, some crowd sales are
+    // capped beyond that. If the initial token amount is greater than the
+    // tokens reserved for the presale, the crowdsale is considered to have a
+    // universal cap and minting will not happen beyond that. See the function
+    // isCappedCrowdsale() for this logic in code.
+    uint256 public tokensForPresale;
+    uint256 public initialTokenAmount;
+
+    event PresalePurchase(address indexed beneficiary, uint256 amount, bytes32
                           tokenName);
 
+    event TokenSalePurchase(address indexed beneficiary, uint256 amount,
+                            bytes32 tokenName);
+
     function Crowdsale(uint256 _startTime, uint256 _endTime, address _merchant,
-                      address _auditor, uint _auditorFee)
+                       address _auditor, uint _auditorFee, bytes32 _tokenName,
+                      bytes32 _tokenSymbol, uint256
+                      _initialTokenAmount, uint256 _tokensForPresale)
     {
         require(_startTime >= now);
         require(_endTime >= _startTime);
         require(_merchant != 0x0);
         require(_auditor != 0x0);
-        require(_auditorFee < 100);
+        require(_auditorFee < feePrecision);
+        require(_initialTokenAmount > 0);
+        require(_tokensForPresale > 0);
+        require(_tokensForPresale <= _initialTokenAmount);
 
-        token = createTokenContract();
+        token = createTokenContract(_tokenName, _tokenSymbol);
         startTime = _startTime;
         endTime = _endTime;
         merchant = _merchant;
@@ -51,8 +75,12 @@ contract Crowdsale {
         auditorFee = _auditorFee;
     }
 
-    function createTokenContract() internal returns (MintableToken) {
-        return new MintableToken();
+    function isCappedCrowdsale() public returns (bool) {
+        return tokensForPresale != initialTokenAmount;
+    }
+
+    function createTokenContract(bytes32 tokenName, bytes32 tokenSymbol) internal returns (NamedMintableToken) {
+        return new NamedMintableToken(tokenName, tokenSymbol);
     }
 
     // fallback function can be used to buy tokens
@@ -65,18 +93,19 @@ contract Crowdsale {
         require(beneficiary != 0x0);
         require(validPurchase());
         require(rate > 0);
-        require(auditorFee < 100);
+        require(auditorFee < feePrecision);
 
         uint256 weiAmount = msg.value;
 
         // calculate token amount to be created
-        uint256 tokens = weiAmount.mul(rate);
+        uint256 tokens = weiToTokens(weiAmount);
 
         // update state
         tokenSaleRaised = tokenSaleRaised.add(weiAmount);
 
         token.mint(beneficiary, tokens);
-        //TokenPurchase(msg.sender, beneficiary, weiAmount, tokens);
+
+        TokenSalePurchase(msg.sender, weiAmount, token.name());
 
         forwardFunds();
     }
@@ -87,7 +116,7 @@ contract Crowdsale {
         // Reassert some basics here.
         uint256 funds = msg.value;
         // No floating point math in Solidity
-        uint256 auditorShare = funds.mul(auditorFee).div(100);
+        uint256 auditorShare = funds.mul(auditorFee).div(feePrecision);
         auditor.transfer(auditorShare);
         merchant.transfer(funds - auditorShare);
     }
@@ -97,12 +126,17 @@ contract Crowdsale {
     // crowd sales, where the rate is set arbitrarily.
     // Our crowd sales have rates set by the market during
     // a presale period, and thus nothing is valid if that
-    // rate has not been established yet.
+    // rate has not been established yet. It is also important that anyone who
+    // contributed during the presale itself get their tokens first.
     function validPurchase() internal constant returns (bool) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = msg.value != 0;
         bool isRateInitialized = rate != 0;
-        return withinPeriod && nonZeroPurchase && isRateInitialized;
+        bool isNotOversold = isCappedCrowdsale()==false || initialTokenAmount > (token.totalSupply().add(weiToTokens(msg.value)));
+        return withinPeriod &&
+            nonZeroPurchase &&
+            isRateInitialized &&
+            isNotOversold;
     }
 
     // @return true if crowdsale event has ended
@@ -114,9 +148,31 @@ contract Crowdsale {
         return presaleRaised.add(tokenSaleRaised);
     }
 
-    function logPresale(address beneficiary, uint256 amount) public {
+    function logOffChainPresale(address beneficiary, uint256 contribution) public {
         require(msg.sender == auditor);
-        PresalePurchase(beneficiary, amount, "token name");
+        // Presume they are a new contributor - but add to their contribution
+        // if they are not.
+        if(cache.newContributor(beneficiary, contribution) == false){
+            cache.addToContribution(beneficiary, contribution);
+        }
+        PresalePurchase(beneficiary, contribution, token.name());
+    }
+
+    // Fulfills one presale in the cache. Returns the number of contributors
+    // left to service.
+    function fufillOnePresale() returns (uint) {
+        require(msg.sender == auditor || msg.sender == merchant);
+        require(rate > 0);
+
+        if(cache.getContributorCount() == 0) {
+            return 0;
+        }
+        // We know there is at least one contributor cached by this point
+        address beneficiary = cache.contributorList(0);
+        uint256 contribution = cache.getContribution(beneficiary);
+        token.mint(beneficiary, contribution);
+        cache.deleteContribution(beneficiary);
+        return cache.getContributorCount();
     }
 
     // Since this is set by the market during the presale period,
@@ -124,5 +180,11 @@ contract Crowdsale {
     // checked.
     function getRate() public returns (uint256) {
         return rate;
+    }
+
+    // This logic is to convert is in a handful of places, so it should be in a
+    // function to keep the logic consistent by default.
+    function weiToTokens(uint256 value) private returns (uint256) {
+        return value.mul(rate);
     }
 }

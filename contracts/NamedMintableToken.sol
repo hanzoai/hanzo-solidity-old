@@ -5,17 +5,16 @@ In other words. This is intended for deployment in something like a Token Factor
 Imagine coins, currencies, shares, voting weight, etc.
 Machine-based, rapid creation of many tokens would not necessarily need these extra features or will be minted in other manners.
 
-1) Initial Finite Supply (upon creation one specifies how much is minted).
 2) In the absence of a token registry: Optional Decimal, Symbol & Name.
 3) Optional approveAndCall() functionality to notify a contract if an approval() has occurred.
 
 .*/
 
-import "./StandardToken.sol";
+import 'zeppelin-solidity/contracts/token/MintableToken.sol';
 
 pragma solidity ^0.4.8;
 
-contract HumanStandardToken is StandardToken {
+contract NamedMintableToken is MintableToken{
 
     /* Public variables of the token */
 
@@ -25,21 +24,15 @@ contract HumanStandardToken is StandardToken {
     They allow one to customise the token contract & in no way influences the core functionality.
     Some wallets/interfaces might not even bother to look at this information.
     */
-    string public name;                   //fancy name: eg Simon Bucks
-    uint8 public decimals;                //How many decimals to show. ie. There could 1000 base units with 3 decimals. Meaning 0.980 SBX = 980 base units. It's like comparing 1 wei to 1 ether.
-    string public symbol;                 //An identifier: eg SBX
-    string public version = 'H0.1';       //human 0.1 standard. Just an arbitrary versioning scheme.
+    bytes32 public name;                   //fancy name: eg Simon Bucks
+    bytes32 public symbol;                 //An identifier: eg SBX
+    string public version = 'H1.0';       //Hanzo 1.0 standard. Just an arbitrary versioning scheme.
 
-    function HumanStandardToken(
-        uint256 _initialAmount,
-        string _tokenName,
-        uint8 _decimalUnits,
-        string _tokenSymbol
+    function NamedMintableToken(
+        bytes32 _tokenName,
+        bytes32 _tokenSymbol
         ) {
-        balances[msg.sender] = _initialAmount;               // Give the creator all initial tokens
-        totalSupply = _initialAmount;                        // Update total supply
         name = _tokenName;                                   // Set the name for display purposes
-        decimals = _decimalUnits;                            // Amount of decimals for display purposes
         symbol = _tokenSymbol;                               // Set the symbol for display purposes
     }
 

@@ -1,6 +1,6 @@
 pragma solidity ^ 0.4.13;
 
-contract mappedContributor{
+contract ContributorCache{
 
     struct Contributor {
         address addr;
@@ -8,7 +8,7 @@ contract mappedContributor{
         uint listPointer;
     }
 
-    mapping(address => Contributor) internal contributors;
+    mapping(address => Contributor) public contributors;
     address[] public contributorList;
 
     function isContributor(address contributorAddress) public constant returns(bool hasContribution) {
@@ -19,6 +19,11 @@ contract mappedContributor{
     function getContributorCount() public constant returns(uint contributorCount) {
         return contributorList.length;
     }
+
+    function getContribution(address contributor) public constant returns(uint256) {
+        return contributors[contributor].contribution;
+    }
+
     function newContributor(address contributorAddress, uint256 contribution) public returns(bool success) {
         if(isContributor(contributorAddress)) return false;
         contributors[contributorAddress].contribution = contribution;
