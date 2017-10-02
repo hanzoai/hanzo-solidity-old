@@ -175,6 +175,24 @@ contract Crowdsale {
         return cache.getContributorCount();
     }
 
+    // Skips one presale in the cache, used when a payment to an address
+    // is failing for whatever reason so all payments cannot be halted by one
+    // bad actor. Returns the number of contributors
+    // left to service.
+    function skipOnePresale() returns (uint) {
+        require(msg.sender == auditor || msg.sender == merchant);
+
+        if(cache.getContributorCount() == 0) {
+            return 0;
+        }
+        // We know there is at least one contributor cached by this point
+        address beneficiary = cache.contributorList(0);
+        uint256 contribution = cache.getContribution(beneficiary);
+        cache.deleteContribution(beneficiary); // Pop the contributor off the top
+        cache.newContributor(beneficiary, contribution); // And put them on the end
+        return cache.getContributorCount();
+    }
+
     // Since this is set by the market during the presale period,
     // it's worth making an explicit getter to let people know this can be
     // checked.
