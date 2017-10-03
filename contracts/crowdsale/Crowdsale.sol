@@ -36,6 +36,8 @@ contract Crowdsale {
     uint256 public tokenSaleRaised;
 
     // How many token units per wei
+    // Due to the way we're calculating wei -> tokens, the absolute minimum
+    // token can cost is 1 wei. Partial wei doesn't make any sense.
     uint256 public rate;
 
     // There is always some initial token amount so we can calculate the rate
@@ -73,9 +75,10 @@ contract Crowdsale {
         merchant = _merchant;
         auditor = _auditor;
         auditorFee = _auditorFee;
+        cache = new ContributorCache();
     }
 
-    function isCappedCrowdsale() public returns (bool) {
+    function isCappedCrowdsale() public returns (bool isCapped) {
         return tokensForPresale != initialTokenAmount;
     }
 
@@ -128,7 +131,7 @@ contract Crowdsale {
     // a presale period, and thus nothing is valid if that
     // rate has not been established yet. It is also important that anyone who
     // contributed during the presale itself get their tokens first.
-    function validPurchase() internal constant returns (bool) {
+    function validPurchase() internal constant returns (bool isValid) {
         bool withinPeriod = now >= startTime && now <= endTime;
         bool nonZeroPurchase = msg.value != 0;
         bool isRateInitialized = rate != 0;
@@ -140,15 +143,15 @@ contract Crowdsale {
     }
 
     // @return true if crowdsale event has ended
-    function hasEnded() public constant returns (bool) {
+    function hasEnded() public constant returns (bool isOver) {
         return now > endTime;
     }
 
-    function totalRaised() public constant returns (uint256) {
+    function totalRaised() public constant returns (uint256 totalWeiRaised) {
         return presaleRaised.add(tokenSaleRaised);
     }
 
-    function logOffChainPresale(address beneficiary, uint256 contribution) public {
+    function logOffChainPresale(address beneficiary, uint256 contribution) public returns (bool success){
         require(msg.sender == auditor);
         // Presume they are a new contributor - but add to their contribution
         // if they are not.
@@ -156,11 +159,12 @@ contract Crowdsale {
             cache.addToContribution(beneficiary, contribution);
         }
         PresalePurchase(beneficiary, contribution, token.name());
+        return true;
     }
 
     // Fulfills one presale in the cache. Returns the number of contributors
     // left to service.
-    function fufillOnePresale() returns (uint) {
+    function fufillOnePresale() returns (uint remainingPresales) {
         require(msg.sender == auditor || msg.sender == merchant);
         require(rate > 0);
 
@@ -179,9 +183,8 @@ contract Crowdsale {
     // is failing for whatever reason so all payments cannot be halted by one
     // bad actor. Returns the number of contributors
     // left to service.
-    function skipOnePresale() returns (uint) {
+    function skipOnePresale() returns (uint remainingPresales) {
         require(msg.sender == auditor || msg.sender == merchant);
-
         if(cache.getContributorCount() == 0) {
             return 0;
         }
@@ -196,7 +199,7 @@ contract Crowdsale {
     // Since this is set by the market during the presale period,
     // it's worth making an explicit getter to let people know this can be
     // checked.
-    function getRate() public returns (uint256) {
+    function getRate() public returns (uint256 currentRate) {
         return rate;
     }
 
