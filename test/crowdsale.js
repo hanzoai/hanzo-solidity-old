@@ -8,15 +8,13 @@ var Crowdsale = artifacts.require("Crowdsale")
 
 
 contract('Crowdsale', function(accounts) {
-  const rate = new BigNumber(1000)
+  const rate = new Number(1000)
   const value = ether(42)
   const auditorFee = new Number(50)
   const tokenName = "TestToken"
   const tokenSymbol = "tT"
-  const initialTokenAmount = new BigNumber(100000)
-  const tokensForPresale = new BigNumber(100000)
-
-  const expectedTokenAmount = rate.mul(value)
+  const initialTokenAmount = new Number(100000)
+  const tokensForPresale = new Number(100000)
 
   before(async function() {
     //Advance to the next block to correctly read time in the solidity "now" function interpreted by testrpc
@@ -28,7 +26,7 @@ contract('Crowdsale', function(accounts) {
     this.endTime =   this.startTime + duration.weeks(1);
     this.afterEndTime = this.endTime + duration.seconds(1)
 
-    this.crowdsale = Crowdsale.new(startTime, endTime, accounts[0], accounts[1], auditorFee, tokenName, tokenSymbol, initialTokenAmount, tokensForPresale)
+    this.crowdsale = Crowdsale.new(this.startTime, this.endTime, accounts[0], accounts[1], auditorFee, tokenName, tokenSymbol, initialTokenAmount, tokensForPresale)
   })
 
   it('should log presale correctly', async function() {

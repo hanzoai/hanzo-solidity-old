@@ -1,10 +1,14 @@
-require('babel-register');
+require('babel-register')({
+  ignore: (filename) => {
+    if (/node_modules/.test(filename) && !/node_modules\/zeppelin/.test(filename)) {
+      return true
+    }
+    return false
+  },
+})
 require('babel-polyfill');
 
 module.exports = {
-  mocha: {
-    compilers: 'babel-core/register'
-  },
   networks: {
     development: {
       host: 'localhost',
