@@ -151,7 +151,7 @@ contract Crowdsale {
         return presaleRaised.add(tokenSaleRaised);
     }
 
-    function logOffChainPresale(address beneficiary, uint256 contribution) public returns (bool success){
+    function logOffChainPresale(address beneficiary, uint256 contribution) public returns (bool){
         require(msg.sender == auditor);
         // Presume they are a new contributor - but add to their contribution
         // if they are not.
@@ -183,7 +183,7 @@ contract Crowdsale {
     // is failing for whatever reason so all payments cannot be halted by one
     // bad actor. Returns the number of contributors
     // left to service.
-    function skipOnePresale() returns (uint remainingPresales) {
+    function skipOnePresale() returns (uint) {
         require(msg.sender == auditor || msg.sender == merchant);
         if(cache.getContributorCount() == 0) {
             return 0;
@@ -199,7 +199,7 @@ contract Crowdsale {
     // Since this is set by the market during the presale period,
     // it's worth making an explicit getter to let people know this can be
     // checked.
-    function getRate() public returns (uint256 currentRate) {
+    function getRate() public constant returns (uint256) {
         return rate;
     }
 
