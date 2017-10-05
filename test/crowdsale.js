@@ -44,8 +44,16 @@ contract('Crowdsale', function(accounts) {
 
   it('should return rate', async function() {
     let ret = await this.crowdsale.getRate()
-    console.log('getRate', ret)
     ret.toNumber().should.equal(0)
+  })
+
+  it('should return remaining presales appropriately', async function() {
+    let pre = await this.crowdsale.remainingPresales()
+    pre.toNumber().should.equal(0)
+    var contribution = new BigNumber(Math.floor(Math.random() * 100000))
+    const {logs} = await this.crowdsale.logOffChainPresale(accounts[4], contribution, {from: accounts[1]})
+    let post = await this.crowdsale.remainingPresales()
+    post.toNumber().should.equal(1)
   })
 
 })
