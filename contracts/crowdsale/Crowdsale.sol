@@ -78,7 +78,7 @@ contract Crowdsale {
         cache = new ContributorCache();
     }
 
-    function isCappedCrowdsale() public returns (bool isCapped) {
+    function isCappedCrowdsale() public constant returns (bool isCapped) {
         return tokensForPresale != initialTokenAmount;
     }
 
@@ -164,7 +164,7 @@ contract Crowdsale {
 
     // Fulfills one presale in the cache. Returns the number of contributors
     // left to service.
-    function fufillOnePresale() returns (uint remainingPresales) {
+    function fufillOnePresale() returns (uint) {
         require(msg.sender == auditor || msg.sender == merchant);
         require(rate > 0);
 
@@ -176,6 +176,11 @@ contract Crowdsale {
         uint256 contribution = cache.getContribution(beneficiary);
         token.mint(beneficiary, contribution);
         cache.deleteContribution(beneficiary);
+        return cache.getContributorCount();
+    }
+
+    // Returns the number of contributors left to service.
+    function remainingPresales() public constant returns(uint) {
         return cache.getContributorCount();
     }
 
@@ -205,7 +210,7 @@ contract Crowdsale {
 
     // This logic is to convert is in a handful of places, so it should be in a
     // function to keep the logic consistent by default.
-    function weiToTokens(uint256 value) private returns (uint256) {
+    function weiToTokens(uint256 value) private constant returns (uint256) {
         return value.mul(rate);
     }
 }
