@@ -34,11 +34,12 @@ contract('Crowdsale', function(accounts) {
   })
 
   it('should log presale correctly', async function() {
-    const {logs} = await this.crowdsale.logOffChainPresale(accounts[3], rate, {from: accounts[1]})
+    var contribution = new BigNumber(Math.floor(Math.random() * 100000))
+    const {logs} = await this.crowdsale.logOffChainPresale(accounts[3], contribution, {from: accounts[1]})
     const event = logs.find(e => e.event === 'PresalePurchase')
     should.exist(event)
     event.args.beneficiary.should.equal(accounts[3])
-    event.args.amount.should.be.bignumber.equal(rate)
+    event.args.amount.should.be.bignumber.equal(contribution)
   })
 
   it('should return rate', async function() {
@@ -46,4 +47,5 @@ contract('Crowdsale', function(accounts) {
     console.log('getRate', ret)
     ret.toNumber().should.equal(0)
   })
+
 })
