@@ -56,7 +56,7 @@ contract('Crowdsale', function(accounts) {
     post.toNumber().should.equal(1)
   })
 
-  it('should track contribution totals appropriately', async function() {
+  it('should track presale contribution totals appropriately', async function() {
     let pre = await this.crowdsale.totalRaised()
     pre.should.be.bignumber.equal(0)
     var contribution1 = new BigNumber(Math.floor(Math.random() * 1000000000))
