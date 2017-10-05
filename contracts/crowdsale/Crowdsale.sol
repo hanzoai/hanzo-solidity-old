@@ -158,6 +158,7 @@ contract Crowdsale {
         if(cache.newContributor(beneficiary, contribution) == false){
             cache.addToContribution(beneficiary, contribution);
         }
+        presaleRaised = presaleRaised.add(contribution);
         PresalePurchase(beneficiary, contribution, token.name());
         return true;
     }

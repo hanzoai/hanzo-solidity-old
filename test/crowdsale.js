@@ -56,4 +56,16 @@ contract('Crowdsale', function(accounts) {
     post.toNumber().should.equal(1)
   })
 
+  it('should track contribution totals appropriately', async function() {
+    let pre = await this.crowdsale.totalRaised()
+    pre.should.be.bignumber.equal(0)
+    var contribution1 = new BigNumber(Math.floor(Math.random() * 1000000000))
+    var contribution2 = new BigNumber(Math.floor(Math.random() * 1000000000))
+    const {logs} = await this.crowdsale.logOffChainPresale(accounts[3], contribution1, {from: accounts[1]})
+    let mid = await this.crowdsale.totalRaised()
+    mid.should.be.bignumber.equal(contribution1)
+    const {logs2} = await this.crowdsale.logOffChainPresale(accounts[3], contribution2, {from: accounts[1]})
+    let post = await this.crowdsale.totalRaised()
+    post.should.be.bignumber.equal(contribution1.plus(contribution2))
+  })
 })
