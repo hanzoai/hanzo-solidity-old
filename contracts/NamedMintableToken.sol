@@ -24,16 +24,18 @@ contract NamedMintableToken is MintableToken{
     They allow one to customise the token contract & in no way influences the core functionality.
     Some wallets/interfaces might not even bother to look at this information.
     */
-    bytes32 public name;                   //fancy name: eg Simon Bucks
-    bytes32 public symbol;                 //An identifier: eg SBX
+    bytes32 public name;
+    bytes32 public symbol;
     string public version = 'H1.0';       //Hanzo 1.0 standard. Just an arbitrary versioning scheme.
 
     function NamedMintableToken(
         bytes32 _tokenName,
-        bytes32 _tokenSymbol
+        bytes32 _tokenSymbol,
+        address _owner
         ) {
         name = _tokenName;                                   // Set the name for display purposes
         symbol = _tokenSymbol;                               // Set the symbol for display purposes
+        owner = _owner;
     }
 
     /* Approves and then calls the receiving contract */

@@ -69,7 +69,7 @@ contract Crowdsale {
         require(_tokensForPresale > 0);
         require(_tokensForPresale <= _initialTokenAmount);
 
-        token = createTokenContract(_tokenName, _tokenSymbol);
+        token = createTokenContract(_tokenName, _tokenSymbol, _merchant);
         startTime = _startTime;
         endTime = _endTime;
         merchant = _merchant;
@@ -82,8 +82,8 @@ contract Crowdsale {
         return tokensForPresale != initialTokenAmount;
     }
 
-    function createTokenContract(bytes32 tokenName, bytes32 tokenSymbol) internal returns (NamedMintableToken) {
-        return new NamedMintableToken(tokenName, tokenSymbol);
+    function createTokenContract(bytes32 tokenName, bytes32 tokenSymbol, address owner) internal returns (NamedMintableToken) {
+        return new NamedMintableToken(tokenName, tokenSymbol, owner);
     }
 
     // fallback function can be used to buy tokens

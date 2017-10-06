@@ -6,6 +6,7 @@ import EVMThrow from 'zeppelin-solidity/test/helpers/EVMThrow'
 
 var Crowdsale = artifacts.require('Crowdsale')
 const BigNumber = web3.BigNumber
+const NamedMintableToken = artifacts.require('NamedMintableToken')
 
 const should = require('chai')
   .use(require('chai-as-promised'))
@@ -31,6 +32,7 @@ contract('Crowdsale', function(accounts) {
     this.endTime =   this.startTime + duration.weeks(1);
     this.afterEndTime = this.endTime + duration.seconds(1)
     this.crowdsale = await Crowdsale.new(this.startTime, this.endTime, accounts[0], accounts[1], auditorFee, tokenName, tokenSymbol, initialTokenAmount, tokensForPresale)
+    this.token = NamedMintableToken.at(await this.crowdsale.token())
   })
 
   it('should log presale correctly', async function() {
@@ -68,4 +70,10 @@ contract('Crowdsale', function(accounts) {
     let post = await this.crowdsale.totalRaised()
     post.should.be.bignumber.equal(contribution1.plus(contribution2))
   })
+
+  it('should be token owner', async function () {
+    const owner = await this.token.owner()
+    owner.should.equal(accounts[0])
+  })
 })
+
