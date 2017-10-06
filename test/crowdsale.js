@@ -75,5 +75,13 @@ contract('Crowdsale', function(accounts) {
     const owner = await this.token.owner()
     owner.should.equal(accounts[0])
   })
+
+  it('should be ended only after end', async function () {
+    let ended = await this.crowdsale.hasEnded()
+    ended.should.equal(false)
+    await increaseTimeTo(this.afterEndTime)
+    ended = await this.crowdsale.hasEnded()
+    ended.should.equal(true)
+  })
 })
 
