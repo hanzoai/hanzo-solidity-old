@@ -69,12 +69,14 @@ contract Crowdsale {
         require(_tokensForPresale > 0);
         require(_tokensForPresale <= _initialTokenAmount);
 
-        token = createTokenContract(_tokenName, _tokenSymbol, _merchant);
+        token = createTokenContract(_tokenName, _tokenSymbol, _merchant, _auditor);
         startTime = _startTime;
         endTime = _endTime;
         merchant = _merchant;
         auditor = _auditor;
         auditorFee = _auditorFee;
+        tokensForPresale = _tokensForPresale;
+        initialTokenAmount = _initialTokenAmount;
         cache = new ContributorCache();
     }
 
@@ -82,20 +84,30 @@ contract Crowdsale {
         return tokensForPresale != initialTokenAmount;
     }
 
-    function createTokenContract(bytes32 tokenName, bytes32 tokenSymbol, address owner) internal returns (NamedMintableToken) {
-        return new NamedMintableToken(tokenName, tokenSymbol, owner);
+    function createTokenContract(bytes32 _tokenName, bytes32 _tokenSymbol, address _owner, address _auditor) internal returns (NamedMintableToken) {
+        return new NamedMintableToken(_tokenName, _tokenSymbol, _owner, _auditor);
     }
 
     // fallback function can be used to buy tokens
     function () payable {
-       buyTokens(msg.sender);
+        buyTokens(msg.sender);
+    }
+
+    function buyTokensTest(address beneficiary) public payable {
+        require(beneficiary != 0x0);
+        require(validPurchase());
+        require(auditorFee < feePrecision);
+
+        uint256 weiAmount = msg.value;
+        uint256 tokens = weiToTokens(weiAmount);
+
+        token.mint(beneficiary, tokens);
     }
 
     // low level token purchase function
     function buyTokens(address beneficiary) public payable {
         require(beneficiary != 0x0);
         require(validPurchase());
-        require(rate > 0);
         require(auditorFee < feePrecision);
 
         uint256 weiAmount = msg.value;
@@ -104,7 +116,6 @@ contract Crowdsale {
         uint256 tokens = weiToTokens(weiAmount);
 
         // update state
-        tokenSaleRaised = tokenSaleRaised.add(weiAmount);
 
         token.mint(beneficiary, tokens);
 
@@ -213,5 +224,10 @@ contract Crowdsale {
     // function to keep the logic consistent by default.
     function weiToTokens(uint256 value) private constant returns (uint256) {
         return value.mul(rate);
+    }
+
+    function setRate() {
+        require(msg.sender == auditor);
+        rate = tokensForPresale.div(presaleRaised);
     }
 }

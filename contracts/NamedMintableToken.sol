@@ -27,15 +27,50 @@ contract NamedMintableToken is MintableToken{
     bytes32 public name;
     bytes32 public symbol;
     string public version = 'H1.0';       //Hanzo 1.0 standard. Just an arbitrary versioning scheme.
+    mapping(address => bool) public minters;
+    address public auditor;
+
+    modifier onlyFounders() {
+        require(msg.sender == owner || msg.sender == auditor);
+        _;
+    }
+
+    modifier onlyMinters() {
+        require(minters[msg.sender]);
+        _;
+    }
+
+    function addMinter(address minter) onlyFounders public returns(bool) {
+        minters[minter] = true;
+        return true;
+    }
+
+    function removeMinter(address minter) onlyFounders public returns(bool) {
+        minters[minter] = false;
+        return true;
+    }
 
     function NamedMintableToken(
         bytes32 _tokenName,
         bytes32 _tokenSymbol,
-        address _owner
+        address _owner,
+        address _auditor
         ) {
         name = _tokenName;                                   // Set the name for display purposes
         symbol = _tokenSymbol;                               // Set the symbol for display purposes
         owner = _owner;
+        auditor = _auditor;
+        minters[_owner] = true;
+        minters[_auditor] = true;
+        minters[msg.sender] = true;
+    }
+
+    function mint(address _to, uint256 _amount) onlyMinters canMint public returns (bool) {
+        totalSupply = totalSupply.add(_amount);
+        balances[_to] = balances[_to].add(_amount);
+        Mint(_to, _amount);
+        Transfer(0x0, _to, _amount);
+        return true;
     }
 
     /* Approves and then calls the receiving contract */
